@@ -411,6 +411,18 @@ if [ $NCHECKS -eq "0" ]; then
     exit 1
 fi
 
+echo "----------------------------------------------------------------------"
+echo " 6. Checking that files can be read using python DatasetHelper"
+echo "    Note: can only check metadata, as styles are randomized"
+LOG=$LOGDIR/dataset_helper_check_files.txt
+echo "    Log: $LOG"
+${SCRIPT_DIR}/check_dataset_files.py \
+             --sequences_file=${SCRIPT_DIR}/data/test_sequence_list.txt \
+             --base_dir=$UNCOMPDIR \
+             --datatypes='FLOW,ALPHA,OCCLUSIONS,CORRESPONDENCES,OBJECTIDS_KEY,ALPHA,DEPTHIMG,DEPTHIMG_RANGE,DEPTH,NORMALS,RENDER_ORIGINAL' \
+             > $LOG 2>&1
+report_status $? 0 "      "
+
 if [ $NFAILURES -eq 0 ]; then
     LOG=$LOGDIR/log_phase17.txt
     echo "----------------------------------------------------------------------"
