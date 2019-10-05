@@ -1,15 +1,16 @@
+#!/usr/bin/env python
+
 import unittest
 
 import numpy as np
 import os
 from skimage.io import imread, imsave
 
-import blender.flow_util as flow_util
-import blender.io_util as io_util
+import creativeflow.blender.flow_util as flow_util
+import creativeflow.blender.io_util as io_util
 
 
 class FlowUtilTest(unittest.TestCase):
-
     def datapath(self, fname):
         test_dir = os.path.dirname(os.path.abspath(__file__))
         return os.path.join(test_dir, 'data', 'flow_util', fname)

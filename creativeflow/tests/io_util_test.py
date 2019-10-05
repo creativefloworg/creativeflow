@@ -4,13 +4,13 @@ import unittest
 
 import os
 import random
-import sys
 import tempfile
 import numpy as np
 from datetime import datetime
+import sys
 
-import blender.io_util as io_util
-from blender.misc_util import QuickTimer
+import creativeflow.blender.io_util as io_util
+from creativeflow.blender.misc_util import QuickTimer
 
 
 def createRandomArr(w, h, nchannels=2):
@@ -26,7 +26,6 @@ class ReadWriteFlowTest(unittest.TestCase):
         flow = createRandomArr(random.randint(20, 1000), random.randint(25, 1000))
         directory = tempfile.gettempdir()
         flowfile = os.path.join(directory, 'flow%d.flo' % random.randint(1, 100000))
-        print('Flow file is %s ' % flowfile)
         self.qtimer.start('write_flow' + ('(slow)' if slow_packing else ''))
         io_util.write_flow(flow, flowfile, slow_packing=slow_packing)
         self.qtimer.end()
@@ -34,9 +33,7 @@ class ReadWriteFlowTest(unittest.TestCase):
         self.qtimer.start('read_flow' + ('(slow)' if slow_unpacking else ''))
         restored_flow = io_util.read_flow(flowfile, slow_unpacking=slow_unpacking)
         self.qtimer.end()
-        self.assertTrue(np.allclose(flow, restored_flow))
-        #diff = self.flow - flow
-        #self.assertLess(np.sum(np.abs(diff)), 0.0001)
+        self.assertTrue(np.allclose(flow, restored_flow), msg='For flow file %s' % flowfile)
 
     def test_read_write(self):
         niterations = 10
@@ -45,7 +42,6 @@ class ReadWriteFlowTest(unittest.TestCase):
             self._run_read_write_test(slow_packing=True, slow_unpacking=True)
 
         if sys.byteorder == 'little':
-            print('Also testing fast unpacking')
             for x in range(niterations):
                 self._run_read_write_test(slow_packing=False, slow_unpacking=False)
                 self._run_read_write_test(slow_packing=True, slow_unpacking=False)
@@ -83,7 +79,6 @@ class CompressTest(unittest.TestCase):
 
         for i in range(len(self.flows)):
             self.assertLess(np.sum(np.abs(self.flows[i] - flows[i])), 0.0001)
-
 
     def test_compress_decompress_arrays(self):
         # Write all arrays

@@ -10,11 +10,11 @@ from skimage.io import imread
 import argparse
 
 #  Add .. to search path, to avoid running as module
-__sdir = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir)
+__sdir = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, os.pardir)
 if __sdir not in sys.path:
     sys.path.append(__sdir)
 
-import blender.io_util as io_util
+import creativeflow.blender.io_util as io_util
 
 
 if __name__ == "__main__":
