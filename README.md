@@ -17,15 +17,47 @@ We detail all 3 use cases below.
 [Creative Flow+ Dataset](http://www.cs.toronto.edu/creativeflow/) is provided as multiple zip files. The data in the zip files is further compressed using various techniques. This section explains how to unpack this data into raw images, flow files, etc.
 
 #### Unzipping Packages
-It is important to unzip all your download packages into the same directory structure. For example, TODO.
+We provide different data types for the same sequences in separate downloads so that you only have to download the data you need. **IMPORTANT:** to make your life easier, unzip all your `test` download packages into the same `test` directory, and all your `train` packages into the same `train` directory. For example:
+
+```shell
+cd $CREATIVEFLOW_DATA
+mkdir -p compressed/train
+unzip $DOWNLOADS/train_flows_mixamo_halfres.zip -d compressed/train
+unzip $DOWNLOADS/train_renders_mixamo_halfres.zip -d compressed/train
+unzip $DOWNLOADS/train_flows_shapenet_halfres.zip -d compressed/train
+unzip $DOWNLOADS/train_renders_shapenet_halfres.zip -d compressed/train
+
+mkdir -p compressed/test
+unzip $DOWNLOADS/test_flows_halfres.zip -d compressed/test
+unzip $DOWNLOADS/test_renders_halfres.zip -d compressed/test
+```
 
 #### Running Decompression
 
-We provide a single script for decompressing the data of interest.
+Once the downloads are unzipped, data must be further decompressed into images/flow files/etc. First, make sure to install all requirements, e.g. into `virtualenv` (use python3):
+```shell script
+pip install -r requirements.pip
+```
+
+Then use our decompression utility: 
 ```bash
+cd creativeflow/creativeflow
+
+# Run with -h to see configuration options
 ./datagen/pipeline_decompress.sh -h
 ```
-For example, TODO.
+
+If you unzipped flow and rendering packages as shown above, you will need to run `pipeline_decompress.sh` once for `compressed/test` and once for `compressed/train` directories. For example, if you require decompressed occlusions (`o`), flows (`f`),  original (`r`) and stylized composited (`C`) renderings, you will need to specify flags `-m ofr -r C`:
+```shell script
+cd creativeflow/creativeflow
+
+for X in "test" "train"; do
+    mkdir -p $CREATIVEFLOW_DATA/decompressed/$X
+    ./datagen/pipeline_decompress.sh \
+      -m ofr -r C -o $CREATIVEFLOW_DATA/decompressed/$X \
+      $CREATIVEFLOW_DATA/compressed/$X
+done
+```
 
 #### About Compressed Data
 Most renders are provided as *mp4* files. Objectid images are simply zipped for every animated sequence. Flows, back flows, and lossless depth are packed into a special zip (of a flattened numpy array containing all data for a sequence, which yields better compression). Depth is also rendered into a normalized video, with max/min range file included alongside. Lossless normals and correspondences are included as uncompressed `mp4 files`. Following decompression, flow is written as Middlebury `.flo` files, most renders as `.png` images and uncompressed depth as serialized `numpy` arrays. Utilities for reading this data, including compressed and decompressed flows, are included in our python library (next section).
