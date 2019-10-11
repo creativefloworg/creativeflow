@@ -1,0 +1,2 @@
+70 LINE 
+30 LINE --randomize_line_color

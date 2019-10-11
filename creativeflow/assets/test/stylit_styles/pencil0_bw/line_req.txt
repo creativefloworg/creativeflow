@@ -1,0 +1,3 @@
+50 LINE --set_linestyle_matching=pencil --randomize_line_color --line_sat_range=0,0.1 --line_value_range=0.0,0.2
+25 LINE --randomize_line_color --line_sat_range=0.5,1.0 --line_value_range=0.5,1.0
+25 LINE --randomize_line_color --line_value_range=0.0,0.5

@@ -1,0 +1,6 @@
+scene_name|scene_source|nframes|cam_idx|nstyles|has_flow|shading_styles|line_styles
+bunny_teapot|web|10|0|2|YES|mock_line_style0,mock_line_style1|mock_line_style0,mock_line_style1
+character|mixamo|10|0|2|YES|mock_line_style0,mock_line_style1|mock_line_style0,mock_line_style1
+flow_test|manual|10|0|2|YES|mock_line_style0,mock_line_style1|mock_line_style0,mock_line_style1
+nonmanifold|manual|10|0|2|YES|mock_line_style0,mock_line_style1|mock_line_style0,mock_line_style1
+norm_test|manual|10|0|2|YES|mock_line_style0,mock_line_style1|mock_line_style0,mock_line_style1

@@ -1,0 +1,3 @@
+10 LINE
+30 LINE --randomize_line_color --line_value_range=0.0,0.3 --line_sat_range=0.0,0.1
+60 LINE --randomize_line_color

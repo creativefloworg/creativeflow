@@ -1,0 +1,7 @@
+scene_name|scene_source|nframes|cam_idx|nstyles|has_flow|shading_styles|line_styles
+Rockin'Zombie|mixamo|30|0|3|YES|charcoal1_bw,textured0,toon3|pen0,pen1,marker2
+Boy|mixamo|20|0|2|BLENDERBUG|toon1,toon2|pen4,marker1
+moonrocket|shapenet|15|0|2|YES|pastels1,watercolor0|marker1,pencil2
+BoringCoffeeCup|shapenet|20|0|2|YES|flat,toon1|pen5,pencil3
+TotoroCatBus|web|10|0|2|YES|flat,ink2|chalk2,chalk0
+TotoroCatBus|web|10|1|2|YES|cpencil3,ink0_bw|chalk6,pen6
