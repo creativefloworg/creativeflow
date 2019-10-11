@@ -79,7 +79,7 @@ cd creativeflow
 python setup.py test
 
 # install
-python setup.py install
+pip install -e .
 ```
 
 #### Using
