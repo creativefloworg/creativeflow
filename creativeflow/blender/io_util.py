@@ -160,6 +160,32 @@ def decompress_flows(zipfilename, output_dir=None, outfile_pattern='flow%06d.flo
     return flows
 
 
+# E.g. read_function=skimage.io.imread
+def compress_images(dirname, zipfilename, read_function):
+    fnames = glob.glob(os.path.join(dirname, '*.png'))
+    fnames.sort()
+
+    images = []
+    for f in fnames:
+        images.append(np.expand_dims(read_function(f), axis=0))
+
+    F = np.concatenate(images)
+    compress_4dnparray(F, zipfilename)
+
+
+# E.g. write_function=skimage.io.imsave
+def decompress_images(zipfilename, write_function, output_dir=None, outfile_pattern='frame%06d.png'):
+    F = decompress_4dnparray(zipfilename, dtype=np.uint8)
+
+    images = []
+    for i in range(F.shape[0]):
+        if output_dir:
+            write_function(os.path.join(output_dir, outfile_pattern % (i + 1)), F[i,:,:,:])
+        images.append(F[i,:,:,:])
+
+    return images
+
+
 def compress_arrays(dirname, shape, zipfilename, extension='.array'):
     fnames = glob.glob(os.path.join(dirname, '*' + extension))
     fnames.sort()
@@ -215,7 +241,7 @@ def compress_4dnparray(F, zipfilename):
     os.remove(tmpfilename)
 
 
-def decompress_4dnparray(zipfilename):
+def decompress_4dnparray(zipfilename, dtype=np.float32):
     zf = zipfile.ZipFile(zipfilename, 'r', allowZip64=True)
     names = zf.namelist()
 
@@ -241,7 +267,7 @@ def decompress_4dnparray(zipfilename):
     zf.close()
 
     extracted_file = os.path.join(tmp_dir, names[0])
-    F = np.fromfile(extracted_file, dtype=np.float32)
+    F = np.fromfile(extracted_file, dtype=dtype)
     os.remove(extracted_file)
 
     F = F.reshape([-1, width, height, nchannels])

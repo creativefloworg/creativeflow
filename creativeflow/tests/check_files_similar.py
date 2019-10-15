@@ -101,8 +101,12 @@ if __name__ == "__main__":
         f0 = skimage.transform.resize(f0, mshape)
         f1 = skimage.transform.resize(f1, mshape)
 
-    diff = np.sum(np.abs(f0 - f1))
-    diff /= (1.0 * f0.shape[0] * f0.shape[1])
-    if diff > args.thresh:
-        raise RuntimeError('Average pixel difference %0.3f exceeds threshold=%0.3f' %
-                           (diff, args.thresh))
+    if args.thresh < 0:
+        if not np.allclose(f0, f1):
+            raise RuntimeError('Files not identical (allclose) failed.')
+    else:
+        diff = np.sum(np.abs(f0 - f1))
+        diff /= (1.0 * f0.shape[0] * f0.shape[1])
+        if diff > args.thresh:
+            raise RuntimeError('Average pixel difference %0.3f exceeds threshold=%0.3f' %
+                               (diff, args.thresh))

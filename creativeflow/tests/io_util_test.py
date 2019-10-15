@@ -6,6 +6,7 @@ import os
 import random
 import tempfile
 import numpy as np
+from skimage.io import imsave, imread
 from datetime import datetime
 import sys
 
@@ -15,6 +16,10 @@ from creativeflow.blender.misc_util import QuickTimer
 
 def createRandomArr(w, h, nchannels=2):
     return ((np.random.rand(w, h, nchannels) - 0.5) * 200).astype(np.float32)
+
+
+def createRandomUintArr(w, h, nchannels=2):
+    return (np.random.rand(w, h, nchannels) * 255).astype(np.uint8)
 
 
 class ReadWriteFlowTest(unittest.TestCase):
@@ -81,19 +86,18 @@ class CompressTest(unittest.TestCase):
             self.assertLess(np.sum(np.abs(self.flows[i] - flows[i])), 0.0001)
 
     def test_compress_decompress_arrays(self):
-        # Write all arrays
         rnum = random.randint(1, 10000)
         directory = tempfile.gettempdir()
         arr_dir = os.path.join(directory, 'arrays%d' % rnum)
         os.mkdir(arr_dir)
 
-        # Write all flows
+        # Write all arrays
         for i in range(len(self.arrays)):
             arrfile = os.path.join(arr_dir, 'meta%02d.array' % i)
             self.arrays[i].reshape([-1]).tofile(arrfile)
         print('Wrote arrays to %s' % arr_dir)
 
-        # Compress all flows
+        # Compress all arrays
         zip_file = os.path.join(directory, 'arr_compr%d.zip' % rnum)
         io_util.compress_arrays(arr_dir, self.arrays[0].shape, zip_file)
         print('Compressed arrays to %s' % zip_file)
@@ -101,8 +105,34 @@ class CompressTest(unittest.TestCase):
         arrays = io_util.decompress_arrays(zip_file)
         self.assertEqual(len(self.arrays), len(arrays))
 
-        for i in range(len(self.flows)):
+        for i in range(len(self.arrays)):
             self.assertLess(np.sum(np.abs(self.arrays[i] - arrays[i])), 0.0001)
+
+    def test_compress_decompress_images(self):
+        orig_images = [createRandomUintArr(self.width, self.width, 3) for x in range(10)]
+
+        rnum = random.randint(1, 10000)
+        directory = tempfile.gettempdir()
+        arr_dir = os.path.join(directory, 'images%d' % rnum)
+        os.mkdir(arr_dir)
+
+        # Write all images
+        for i in range(len(orig_images)):
+            arrfile = os.path.join(arr_dir, 'meta%02d.png' % i)
+            imsave(arrfile, orig_images[i])
+        print('Wrote arrays to %s' % arr_dir)
+
+        # Compress all images
+        zip_file = os.path.join(directory, 'img_compr%d.zip' % rnum)
+        io_util.compress_images(arr_dir, zip_file, read_function=imread)
+        print('Compressed images to %s' % zip_file)
+
+        images = io_util.decompress_images(zip_file, write_function=imsave)
+        self.assertEqual(len(orig_images), len(images))
+
+        for i in range(len(orig_images)):
+            self.assertTrue(np.allclose(orig_images[i], images[i]),
+                            msg=('Failed to decompress image %d' % i))
 
 
 class MiscIoTest(unittest.TestCase):
