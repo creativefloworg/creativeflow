@@ -461,7 +461,7 @@ class SequenceInfo(object):
         return style_idx, frame_idx
 
     def get_meta_path(self, data_type, frame_idx=None, base_dir=''):
-        if frame_idx is None:
+        if frame_idx is None or data_type in PathsHelper.META_INFO:
             return PathsHelper.meta_info_path(
                 data_type, base_dir=base_dir, sequence_name=self.scene_name, cam_idx=self.cam_idx)
         else:
@@ -476,7 +476,7 @@ class SequenceInfo(object):
             style_name = self.line_styles[style_idx]
         else:
             style_name = '%s.%s' % (self.shading_styles[style_idx], self.line_styles[style_idx])
-        if frame_idx is None:
+        if frame_idx is None or data_type in PathsHelper.RENDER_INFO:
             return PathsHelper.render_info_path(
                 data_type, base_dir=base_dir, sequence_name=self.scene_name, cam_idx=self.cam_idx,
                 style_idx=style_idx, style_name=style_name)

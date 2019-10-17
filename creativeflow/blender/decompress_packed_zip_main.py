@@ -17,6 +17,7 @@ up that. This main decompresses these special zip files.
 """
 import argparse
 import os
+import skimage.io
 
 import io_util
 
@@ -29,7 +30,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--input_type', action='store', type=str, required=True,
         help='Must specify whether the ZIP stores packed flows or general arrays: ' +
-        'set to FLOW or ARRAY')
+        'set to FLOW, PNG or ARRAY')
     parser.add_argument(
         '--output_pattern', action='store', type=str, required=True,
         help='Specify output per-frame file format, e.g. /OUTDIR/flow%06d.flo; ' +
@@ -41,6 +42,9 @@ if __name__ == "__main__":
     if args.input_type == 'FLOW':
         flows = io_util.decompress_flows(
             args.input_zip, output_dir=odir, outfile_pattern=obasename)
+    elif args.input_type == 'PNG':
+        images = io_util.decompress_images(
+            args.input_zip, write_function=skimage.io.imsave, output_dir=odir, outfile_pattern=obasename)
     elif args.input_type == 'ARRAY':
         arrays = io_util.decompress_arrays(
             args.input_zip, output_dir=odir, outfile_pattern=obasename)

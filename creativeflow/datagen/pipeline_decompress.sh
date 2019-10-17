@@ -61,8 +61,8 @@ Flags:
 -N run without confirmation
 "
 
-UMETA='acDfinor'
-URENDER='C'
+UMETA=''  # 'acDfinor'
+URENDER=''  # 'C'
 CHECK_SANITY=0
 MIN_SANITY=0
 SKIP_EXISTING=0
@@ -125,8 +125,8 @@ if [[ "$SCRIPT_DIR" = *[[:space:]]* ]]; then
   exit 1
 fi
 
-DIRS=$(ls -1 "$DATADIR")
-NDIRS=$(echo "$DIRS" | awk '{printf "%d", NF}')
+DIRS=$(ls "$DATADIR")
+NDIRS=$(ls -1 "$DATADIR" | wc -l | awk '{printf "%s", $1}')
 echo "----------------------------------------------------------------"
 echo " Decompressing $DATADIR"
 echo
@@ -213,14 +213,15 @@ function decompress_zip {
 
 echo "----------------------------------------------------------------"
 
+N_MISSING_FILES=0
 for D in $DIRS; do
     if [ "$SKIP_EXISTING" -eq 1 ] && [ -d "$ODIR/$D" ]; then
         echo "Hard-skipping sequence: $D"
         continue
     fi
 
+    HAS_MISSING_FILES=0
     CAMS=$(ls -1 "$DATADIR/$D")
-
     for C in $CAMS; do
         INBASE=$DATADIR/$D/$C
         OBASE=$ODIR/$D/$C
@@ -236,16 +237,20 @@ for D in $DIRS; do
         fi
 
         if [[ "$UMETA" == *b* ]]; then
-            decompress_special_zip "FLOW" "$INMETA/backflow.zip" "$OUTMETA/backflow/backflow%06d.flo"
+            if [ -f "$INMETA/backflow.zip" ]; then
+                decompress_special_zip "FLOW" "$INMETA/backflow.zip" "$OUTMETA/backflow/backflow%06d.flo"
+            else
+                echo "     ---> WARN: missing $INMETA/backflow.zip"
+                HAS_MISSING_FILES=1
+            fi
         fi
 
         if [[ "$UMETA" == *c* ]]; then
-            if [ -f "$INMETA/corresp_lossless.mp4" ]; then
-                VFILE="$INMETA/corresp_lossless.mp4"
+            if [ -f "$INMETA/corresp_lossless.zip" ]; then
+                decompress_special_zip "PNG" "$INMETA/corresp_lossless.zip" "$OUTMETA/corresp/corr%06d.png"
             else
-                VFILE="$INMETA/corresp.mp4"
+                decompress_mp4 "$INMETA/corresp.mp4" "$OUTMETA/corresp/corr%06d.png"
             fi
-            decompress_mp4 "$VFILE" "$OUTMETA/corresp/corr%06d.png"
         fi
 
         if [[ "$UMETA" == *d* ]]; then
@@ -258,7 +263,12 @@ for D in $DIRS; do
         fi
 
         if [[ "$UMETA" == *f* ]]; then
-            decompress_special_zip "FLOW" "$INMETA/flow.zip" "$OUTMETA/flow/flow%06d.flo"
+            if [ -f "$INMETA/flow.zip" ]; then
+                decompress_special_zip "FLOW" "$INMETA/flow.zip" "$OUTMETA/flow/flow%06d.flo"
+            else
+                echo "     ---> WARN: missing $INMETA/flow.zip"
+                HAS_MISSING_FILES=1
+            fi
         fi
 
         if [[ "$UMETA" == *i* ]]; then
@@ -266,22 +276,25 @@ for D in $DIRS; do
         fi
 
         if [[ "$UMETA" == *n* ]]; then
-            if [ -f "$INMETA/normals_lossless.mp4" ]; then
-                VFILE="$INMETA/normals_lossless.mp4"
+            if [ -f "$INMETA/normals_lossless.zip" ]; then
+                decompress_special_zip "PNG" "$INMETA/normals_lossless.zip" "$OUTMETA/normals/normal%06d.png"
             else
-                VFILE="$INMETA/normals.mp4"
+                decompress_mp4 "$INMETA/normals.mp4" "$OUTMETA/normals/normal%06d.png"
             fi
-            decompress_mp4 "$VFILE" "$OUTMETA/normals/normal%06d.png"
+
         fi
 
         if [[ "$UMETA" == *o* ]]; then
-            decompress_mp4 "$INMETA/occlusions.mp4" "$OUTMETA/occlusions/occlusions%06d.png"
+            if [ -f "$INMETA/occlusions.mp4" ]; then
+                decompress_mp4 "$INMETA/occlusions.mp4" "$OUTMETA/occlusions/occlusions%06d.png"
+            else
+                echo "     ---> WARN: missing $INMETA/occlusions.mp4"
+                HAS_MISSING_FILES=1
+            fi
         fi
 
         if [[ "$UMETA" == *r* ]]; then
             decompress_mp4 "$INMETA/original.mp4" "$OUTMETA/original_render/frame%06d.png"
-
-            # TODO: should decompress red material?
         fi
 
         # Process renders -----------------------------------------------------
@@ -304,7 +317,18 @@ for D in $DIRS; do
             decompress_mp4s_dir "$INRENDER/shading" "$OUTRENDER/shading" "" "mockexclude"
         fi
     done
+    if [ $HAS_MISSING_FILES -eq "1" ]; then
+        N_MISSING_FILES=$((N_MISSING_FILES + 1))
+    fi
 done
+
+if [ $N_MISSING_FILES -gt "0" ]; then
+    echo "NOTE: $N_MISSING_FILES out of $NDIRS scenes are missing files related to flow (see our errata on why this may be)"
+    if [ $N_MISSING_FILES -gt $((NDIRS / 10)) ]; then
+        echo "FAIL: too many scenes are missing required files; did you unzip those packages?"
+        exit 1
+    fi
+fi
 
 
 if [ "$CHECK_SANITY" -eq "1" ]; then
