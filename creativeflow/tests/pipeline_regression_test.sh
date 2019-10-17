@@ -300,13 +300,13 @@ for B in $BLENDLIST; do
         echo "   Log: $LOG"
 
         echo "    > Checking $BNAME/cam$C/metadata/flow"
-        ${SCRIPT_DIR}/check_dir_content_similar.sh -t "0.00001" \
+        ${SCRIPT_DIR}/check_dir_content_similar.sh -t "-1" \
                      $RESDIR/pipeline/$BNAME/cam$C/metadata/flow \
                      $UNCOMPDIR/$BNAME/cam$C/metadata/flow "flo" >> $LOG 2>&1
         report_status $? 0 "      "
 
         echo "    > Checking $BNAME/cam$C/metadata/objectid"
-        ${SCRIPT_DIR}/check_dir_content_similar.sh -t "0.00001" \
+        ${SCRIPT_DIR}/check_dir_content_similar.sh -t "-1" \
                      $RESDIR/pipeline/$BNAME/cam$C/metadata/objectid \
                      $UNCOMPDIR/$BNAME/cam$C/metadata/objectid "png" >> $LOG 2>&1
         report_status $? 0 "      "
@@ -365,14 +365,14 @@ for B in $BLENDLIST; do
         echo "   Log: $LOG"
 
         echo "    > Checking $BNAME/cam$C/metadata/backflow"
-        ${SCRIPT_DIR}/check_dir_content_similar.sh -t "0.00001" \
+        ${SCRIPT_DIR}/check_dir_content_similar.sh -t "-1" \
                      $RESDIR/pipeline/$BNAME/cam$C/metadata/backflow \
                      $UNCOMPDIR/$BNAME/cam$C/metadata/backflow "flo" >> $LOG 2>&1
         report_status $? 0 "      "
 
         for D in "corresp" "depth" "normals"; do
             echo "    > Checking $BNAME/cam$C/metadata/$D"
-            ${SCRIPT_DIR}/check_dir_content_similar.sh -t "0.01" \
+            ${SCRIPT_DIR}/check_dir_content_similar.sh -t "-1" \
                          $RESDIR/pipeline/$BNAME/cam$C/metadata/$D \
                          $UNCOMPDIR/$BNAME/cam$C/metadata/$D "png" >> $LOG 2>&1
             report_status $? 0 "      "

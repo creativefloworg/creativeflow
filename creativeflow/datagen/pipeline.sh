@@ -1182,11 +1182,12 @@ EOF
             echo "     processing $CORRDIR"
             if [ "$(ls -A $CORRDIR)" ]; then
                 mkdir -p $FIN_METADIR_SUPP
-                CORR_VIDEO=$FIN_METADIR_SUPP/corresp_lossless.mp4
-                ffmpeg -y -hide_banner -loglevel panic \
-                       -framerate $FRATE -i $CORRDIR/corr%06d.png \
-                       -c:v libx264 -preset veryslow -crf 0 $CORR_VIDEO
-                echo "       --> Ok: $CORR_VIDEO"
+                CORR_ZIP=$FIN_METADIR_SUPP/corresp_lossless.zip
+                ./blender/compress_packed_zip_main.py \
+                    --input_type='PNG' \
+                    --input_dir=$CORRDIR \
+                    --output_zip=$CORR_ZIP
+                echo "       --> Ok: $CORR_ZIP"
 
                 # Also produce a smaller lossy video
                 mkdir -p $FIN_METADIR
@@ -1201,11 +1202,12 @@ EOF
             echo "     processing $NORMDIR"
             if [ "$(ls -A $NORMDIR)" ]; then
                 mkdir -p $FIN_METADIR_SUPP
-                NORM_VIDEO=$FIN_METADIR_SUPP/normals_lossless.mp4
-                ffmpeg -y -hide_banner -loglevel panic \
-                       -framerate $FRATE -i $NORMDIR/normal%06d.png \
-                       -c:v libx264 -preset veryslow -crf 0 $NORM_VIDEO
-                echo "       --> Ok: $NORM_VIDEO"
+                NORM_ZIP=$FIN_METADIR_SUPP/normals_lossless.zip
+                ./blender/compress_packed_zip_main.py \
+                    --input_type='PNG' \
+                    --input_dir=$NORMDIR \
+                    --output_zip=$NORM_ZIP
+                echo "       --> Ok: $NORM_ZIP"
 
                 # Also produce a smaller lossy video
                 mkdir -p $FIN_METADIR
@@ -1267,8 +1269,8 @@ EOF
             done
 
             # Supplementary metadata
-            for B in "backflow.zip" "depth.zip" "corresp_lossless.mp4" \
-                                    "normals_lossless.mp4"; do
+            for B in "backflow.zip" "depth.zip" "corresp_lossless.zip" \
+                                    "normals_lossless.zip"; do
                 if [ ! -f "$FIN_METADIR_SUPP/$B" ]; then
                     echo "       --> (Missing $B)"
                     FAIL=1

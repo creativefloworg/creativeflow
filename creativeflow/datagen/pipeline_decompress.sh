@@ -61,8 +61,8 @@ Flags:
 -N run without confirmation
 "
 
-UMETA='acDfinor'
-URENDER='C'
+UMETA=''  # 'acDfinor'
+URENDER=''  # 'C'
 CHECK_SANITY=0
 MIN_SANITY=0
 SKIP_EXISTING=0
@@ -246,12 +246,11 @@ for D in $DIRS; do
         fi
 
         if [[ "$UMETA" == *c* ]]; then
-            if [ -f "$INMETA/corresp_lossless.mp4" ]; then
-                VFILE="$INMETA/corresp_lossless.mp4"
+            if [ -f "$INMETA/corresp_lossless.zip" ]; then
+                decompress_special_zip "PNG" "$INMETA/corresp_lossless.zip" "$OUTMETA/corresp/corr%06d.png"
             else
-                VFILE="$INMETA/corresp.mp4"
+                decompress_mp4 "$INMETA/corresp.mp4" "$OUTMETA/corresp/corr%06d.png"
             fi
-            decompress_mp4 "$VFILE" "$OUTMETA/corresp/corr%06d.png"
         fi
 
         if [[ "$UMETA" == *d* ]]; then
@@ -277,12 +276,12 @@ for D in $DIRS; do
         fi
 
         if [[ "$UMETA" == *n* ]]; then
-            if [ -f "$INMETA/normals_lossless.mp4" ]; then
-                VFILE="$INMETA/normals_lossless.mp4"
+            if [ -f "$INMETA/normals_lossless.zip" ]; then
+                decompress_special_zip "PNG" "$INMETA/normals_lossless.zip" "$OUTMETA/normals/normal%06d.png"
             else
-                VFILE="$INMETA/normals.mp4"
+                decompress_mp4 "$INMETA/normals.mp4" "$OUTMETA/normals/normal%06d.png"
             fi
-            decompress_mp4 "$VFILE" "$OUTMETA/normals/normal%06d.png"
+
         fi
 
         if [[ "$UMETA" == *o* ]]; then
