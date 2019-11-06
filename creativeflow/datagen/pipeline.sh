@@ -333,19 +333,7 @@ for i in $(seq 0 $(($k - 1))); do
         FIN_SHADEDIR=$FIN_RENDERDIR/shading
         FIN_COMPDIR=$FIN_RENDERDIR/composite
         FIN_METADIR=$FINALDIR/meta
-
         FIN_METADIR_SUPP=$FINALDIR_SUPP/meta
-
-        # FINALOUT=$BASEDIR/final/meta
-        # FINALOUT=$BASEDIR/final/meta/redmat.mp4   # OK
-        # FINALOUT=$BASEDIR/final/meta/orig.mp4     # OK
-        # FINALOUT=$BASEDIR/final/meta/alpha.mp4    # OK
-        # FINALOUT=$BASEDIR/final/meta/normals.mp4  # OK
-        # FINALOUT=$BASEDIR/final/meta/corresp.mp4  # OK
-        # FINALOUT=$BASEDIR/final/meta/objids.zip   # OK
-        # FINALOUT=$BASEDIR/final/meta/flow.zip     # OK
-        # FINALOUT=$BASEDIR/final/meta/depth.zip    # OK
-        # FINALOUT=$BASEDIR/final/meta/occlusions.mp4  # OK
 
         # Metadata
         FLOWDIR=$METADIR/flow
