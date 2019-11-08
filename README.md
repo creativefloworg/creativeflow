@@ -1,6 +1,5 @@
 
-![ground truth](shading_styles.jpg)
-![styles](http://www.cs.toronto.edu/creativeflow/fig/truth.jpg)
+![styles](mixamo_sample.jpg)
 
 # Creative Flow+ Codebase
 Code accompanying the Creative Flow+ Dataset, CVPR 2019. For paper and data downloads see [project website](http://www.cs.toronto.edu/creativeflow/).
@@ -59,8 +58,8 @@ for X in "test" "train"; do
 done
 ```
 
-#### About Compressed Data
-Most renders are provided as *mp4* files. Objectid images are simply zipped for every animated sequence. Flows, back flows, and lossless depth are packed into a special zip (of a flattened numpy array containing all data for a sequence, which yields better compression). Depth is also rendered into a normalized video, with max/min range file included alongside. Lossless normals and correspondences are included as uncompressed `mp4 files`. Following decompression, flow is written as Middlebury `.flo` files, most renders as `.png` images and uncompressed depth as serialized `numpy` arrays. Utilities for reading this data, including compressed and decompressed flows, are included in our python library (next section).
+#### About Data Format
+Please refer to the [Errata & Details](http://www.cs.toronto.edu/creativeflow/files/2596-errata.pdf) document linked from [our website](http://www.cs.toronto.edu/creativeflow/).
 
 ### 2 Installing and Using Python Utilities
 We recommend using our python utilities to navigate the Creative Flow+ Dataset: 
@@ -68,7 +67,7 @@ We recommend using our python utilities to navigate the Creative Flow+ Dataset:
   * `creativeflow.blender.io_util`: help with I/O
   * `creativeflow.blender.flow_util`: flow-specific utilities
 
-Note that the bulk of the python code in this repository can only run inside Blender, and only these utilities can be installed independently. 
+Note that the bulk of the python code in this repository can only run inside Blender, and only these three modules can be installed independently. 
 
 #### Installing
 To test and install (use python3):
@@ -94,8 +93,9 @@ import creativeflow.blender.flow_util as flow_util
 import creativeflow.blender.io_util as io_util
 
 # create a helper to turn sequence list into paths
+# (if filtering by style, scroll down to see named style diagrams)
 helper = DatasetHelper(
-  seq_file_list, 
+  seq_list_file, 
   require_flow=True,
   regex_sources='web|mixamo',
   regex_shading_styles=ShadingStyles.stylit_styles_regex(),
@@ -187,3 +187,13 @@ cd creativeflow/creativeflow
 # Run pipeline (see examples in tests/pipeline_regression_test.sh)
 ./datagen/pipeline.sh <YOUR FLAGS>
 ```
+
+### Appendix: Named Styles
+
+Refer to these images to identify style appearance by name.
+
+#### Shading Styles
+![styles](shading_styles.jpg)
+
+#### Line Styles
+![styles](line_styles.jpg)
