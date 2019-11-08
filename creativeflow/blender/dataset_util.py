@@ -39,14 +39,14 @@ class DatasetHelper(object):
     The actual presence of these file paths depends on the packages you have
     downloaded and decompressed using datagen/pipeline_decompress.sh
 
-    Accepts input file of the format:
-    scene_name|scene_source|nframes|cam_idx|nstyles|has_flow|shading_styles|line_styles
-    <scene_name>|<scene_source>|<nframes>|<cam_idx>|<nstyles>|<has_flow>|<shading_style0>,<shading_style1>|<line_style0>,<line_style1>
+    Accepts input file with header line and of the format:
+    scene_name|scene_source|nframes|cam_idx|nstyles|has_flow|shading_styles|line_styles|included_frames(opt)|tags(opt)
+    BunnyBlend|web|15|0|2|OK|<shading_style0>,<shading_style1>|<line_style0>,<line_style1>\0,1,2,3|anything
 
     Example usage:
     helper = DatasetHelper('train_sequences.txt',
-                           select_sournces={"mixamo", "web"},
-                           select_shading_styles=ShadingStyles.stylit_paintlike_styles_regex())
+                           regex_sources='mixamo',
+                           regex_shading_styles=ShadingStyles.stylit_paintlike_styles_regex())
     helper.check_files(decompressed_data_path,
                        [DataType.FLOW, DataType.RENDER_COMPOSITE, DataType.RENDER_ORIGINAL],
                        print_all_errors=False)
@@ -70,20 +70,44 @@ class DatasetHelper(object):
                  require_flow=True,
                  regex_sources='.*',
                  regex_shading_styles='.*',
-                 regex_line_styles='.*'):
+                 regex_line_styles='.*',
+                 regex_tags=None,
+                 exclude_frame_numbers=None):
+        """
+
+        :param sequences_file:
+        :param require_flow: if true, skips sequences without flow and excludes last frame
+        :param regex_sources: regular expression for sources to match, e.g. "mixamo", "shapenet", "web"
+        :param regex_shading_styles: regular expression for shading styles to match, e.g. see ShadingStyles
+        :param regex_line_styles: regular expression for line styles to match, e.g. see LineStyles
+        :param regex_tags: regular expressions of tags to match (if applicable)
+        :param exclude_frame_numbers: list of zero-based frame numbers to exclude from every sequence
+        """
         self.global_frame_numbers = []
         self.sequences = []
         self.scene_names = set()
-        self.require_flow = require_flow
+
+        if require_flow:
+            if exclude_frame_numbers is None:
+                exclude_frame_numbers = [-1]
+            elif -1 not in exclude_frame_numbers:
+                exclude_frame_numbers.append(-1)
 
         data_frame = pandas.read_csv(sequences_file, sep='|')
+        data_frame.fillna('', inplace=True)
         for i in data_frame.index:
             row = data_frame.iloc[i]
-            seq = DatasetHelper.sequence_from_row(row, i, regex_shading_styles, regex_line_styles)
+            seq = DatasetHelper.sequence_from_row(
+                row, i, regex_shading_styles, regex_line_styles, exclude_frame_numbers)
             if len(seq.shading_styles) == 0:
                 logger.debug(
                     'Skipping sequence (one of the shading,outline styles matched regexp %s %s): %s' %
                     (row['shading_styles'], row['line_styles'], str(seq)))
+                continue
+
+            if seq.nframes == 0:
+                logger.warning(
+                    'Skipping sequence (no frames included, given criteria): %s' % str(seq))
                 continue
 
             if require_flow and not seq.has_flow:
@@ -91,12 +115,17 @@ class DatasetHelper(object):
                 continue
 
             if not re.match(regex_sources, seq.source):
-                logger.debug('Skipping sequence (source did not match regexp %s): %s' % (seq.source, str(seq)))
+                logger.debug('Skipping sequence (source did not match regexp %s): %s' % (regex_sources, str(seq)))
                 continue
+
+            if regex_tags and not re.match(regex_tags, seq.tags):
+                logger.debug('Skipping sequence (tags did not match regexp %s): %s' % (regex_tags, str(seq)))
+                continue
+
             self._add_sequence(seq)
 
     @staticmethod
-    def sequence_from_row(row, row_idx, regex_shading_styles, regex_line_styles):
+    def sequence_from_row(row, row_idx, regex_shading_styles, regex_line_styles, exclude_frame_numbers):
         shading_styles = row['shading_styles'].split(',')
         line_styles = row['line_styles'].split(',')
 
@@ -110,19 +139,33 @@ class DatasetHelper(object):
         shading_styles_matching = [shading_styles[i] for i in matching_indices]
         line_styles_matching = [line_styles[i] for i in matching_indices]
 
+        tags = ''
+        if 'tags' in row:
+            tags = row['tags']
+
+        included_frames = None
+        if 'included_frames' in row:
+            if not row['included_frames']:
+                included_frames = []
+            else:
+                included_frames = [int(x) for x in row['included_frames'].split(',')]
+
         return SequenceInfo(
             row['scene_name'],
             source=row['scene_source'],
-            nframes=int(row['nframes']),
+            nframes_raw=int(row['nframes']),
             cam_idx=int(row['cam_idx']),
             shading_styles=shading_styles_matching,
             line_styles=line_styles_matching,
-            has_flow=(row['has_flow'] in DatasetHelper.__OK_TAGS))
+            has_flow=(row['has_flow'] in DatasetHelper.__OK_TAGS),
+            tags=tags,
+            included_frames=included_frames,
+            excluded_frames=exclude_frame_numbers)
 
     def _add_sequence(self, seq):
         prev_frames = self.num_frames_in_all_styles()
         self.global_frame_numbers.append(
-            prev_frames + seq.nframes_in_all_styles(ignore_final_frame_with_no_flow=self.require_flow))
+            prev_frames + seq.nframes_in_all_styles())
         self.sequences.append(seq)
         self.scene_names.add(seq.scene_name)
 
@@ -130,21 +173,20 @@ class DatasetHelper(object):
         sequences_missing_files = 0
         for sidx in range(self.num_sequences()):
             seq = self.sequences[sidx]
-            nframes = seq.nframes - (1 if self.require_flow else 0)
             seq_ok = True
             for data_type in data_types:
                 file_names = []
                 if data_type in PathsHelper.META_INFO:
                     file_names.append(seq.get_meta_path(data_type, base_dir=base_dir))
                 elif data_type in PathsHelper.META_FRAMES:
-                    for frame_idx in range(nframes):
+                    for frame_idx in seq.frames:
                         file_names.append(seq.get_meta_path(data_type, frame_idx, base_dir=base_dir))
                 elif data_type in PathsHelper.RENDER_INFO:
                     for style_idx in range(seq.nstyles()):
                         file_names.append(seq.get_render_path(data_type, style_idx, base_dir=base_dir))
                 elif data_type in PathsHelper.RENDER_FRAMES:
                     for style_idx in range(seq.nstyles()):
-                        for frame_idx in range(nframes):
+                        for frame_idx in seq.frames:
                             file_names.append(seq.get_render_path(data_type, style_idx, frame_idx, base_dir=base_dir))
                 missing_files = []
                 for f in file_names:
@@ -162,7 +204,7 @@ class DatasetHelper(object):
 
         data_type_str = ', '.join([str(d) for d in data_types])
         if sequences_missing_files > 0:
-            logger.warning('FAIL: Sequences missing files for data types %s: %d out of %d' %
+            logger.warning('WARN: Sequences missing files for data types %s: %d out of %d' %
                            (data_type_str, sequences_missing_files, self.num_sequences()))
             return False
         else:
@@ -190,8 +232,7 @@ class DatasetHelper(object):
         if i > 0:
             frame_start = self.global_frame_numbers[i - 1]
         seq = self.sequences[i]
-        style_idx, frame_idx = seq.get_style_frame_indices(global_frame - frame_start,
-                                                           ignore_final_frame_with_no_flow=self.require_flow)
+        style_idx, frame_idx = seq.get_style_frame_indices(global_frame - frame_start)
         return seq, style_idx, frame_idx
 
     def num_scenes(self):
@@ -420,44 +461,70 @@ class LineStyles(object):
 
 
 class SequenceInfo(object):
-    def __init__(self, scene_name, source, nframes, cam_idx, shading_styles, line_styles, has_flow, tags=[]):
+    def __init__(self, scene_name, source, nframes_raw, cam_idx, shading_styles, line_styles, has_flow, tags='',
+                 included_frames=None, excluded_frames=None):
+        """
+        Summarizes a sequence, i.e. a scene shot from a specific camera angle, and clips it to desired frame numbers.
+
+        :param scene_name: name of the scene
+        :param source: source of the sequence
+        :param nframes_raw: number of frames in the sequence, regardless of which frames to include/exclude
+        :param cam_idx: camera index
+        :param shading_styles: list of shading style names
+        :param line_styles: list of line style names
+        :param has_flow: whether sequence has flow
+        :param tags:
+        :param included_frames: zero-based
+        :param excluded_frames: zero-based
+        """
         if len(shading_styles) != len(line_styles):
             raise ValueError('Shading and line style counts differ: %s VS %s' %
                              (str(shading_styles), str(line_styles)))
         self.scene_name = scene_name
         self.source = source
-        self.nframes = nframes
+        self.nframes_raw = nframes_raw
         self.cam_idx = cam_idx
         self.shading_styles = shading_styles
         self.line_styles = line_styles
         self.has_flow = has_flow
         self.tags = tags
 
+        orig_frames = range(0, nframes_raw)
+        if included_frames is not None:
+            self.frames = included_frames
+        else:
+            self.frames = orig_frames
+        if excluded_frames:
+            indexes = set([orig_frames[i] for i in excluded_frames])
+            self.frames = filter(lambda x: x not in indexes, self.frames)
+        if type(self.frames) != range:
+            self.frames = list(self.frames)
+            self.frames.sort()
+        self.nframes = len(self.frames)
+
     def nstyles(self):
         return len(self.shading_styles)
 
-    def nframes_in_all_styles(self, ignore_final_frame_with_no_flow=False):
-        if ignore_final_frame_with_no_flow:
-            return (self.nframes - 1) * len(self.shading_styles)
-        else:
-            return self.nframes * len(self.shading_styles)
+    def nframes_in_all_styles(self):
+        return self.nframes * len(self.shading_styles)
 
-    def get_style_frame_indices(self, global_frame, ignore_final_frame_with_no_flow=False):
+    def get_style_frame_indices(self, global_frame):
         """
         A sequence can be rendered in multiple styles. E.g., if the sequence has 3 frames and 2 styles
         then the frames will be as follows:
         F0                  F1                 F2                 F3                 F4
         [frame0 in style0] [frame1 in style0] [frame2 in style0] [frame0 in style1] [frame1 in style1]...
         This method returns the actual frame and style indices for the input global frame such as F4 above.
-        :param ignore_final_frame_with_no_flow: if set, final frame is always skipped, as it has no associated flow
         :param global_frame: frame number within the sequence of all frames in all styles
         :return: style index, frame index
         """
         tot_frames = self.nframes
-        if ignore_final_frame_with_no_flow:
-            tot_frames = tot_frames - 1
         style_idx = global_frame // tot_frames
+        if style_idx >= len(self.shading_styles):
+            raise RuntimeError('Requesting out of bounds frame %d from sequence with %d styles and %d frames: %s' %
+                               (global_frame, len(self.shading_styles), self.nframes, str(self)))
         frame_idx = global_frame - tot_frames * style_idx
+        frame_idx = self.frames[frame_idx]
         return style_idx, frame_idx
 
     def get_meta_path(self, data_type, frame_idx=None, base_dir=''):

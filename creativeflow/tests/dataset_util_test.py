@@ -79,7 +79,6 @@ class SequenceInfoTest(unittest.TestCase):
                                         line_styles=['pencil0', 'pen5'],
                                         has_flow=True)
         self.assertEqual(10, seq.nframes_in_all_styles())
-        self.assertEqual(8, seq.nframes_in_all_styles(ignore_final_frame_with_no_flow=True))
 
         style_idx, frame_idx = seq.get_style_frame_indices(3)
         self.assertEqual(style_idx, 0)
@@ -87,13 +86,21 @@ class SequenceInfoTest(unittest.TestCase):
         style_idx, frame_idx = seq.get_style_frame_indices(4)
         self.assertEqual(style_idx, 0)
         self.assertEqual(frame_idx, 4)
-        style_idx, frame_idx = seq.get_style_frame_indices(4, ignore_final_frame_with_no_flow=True)
-        self.assertEqual(style_idx, 1)
-        self.assertEqual(frame_idx, 0)
         style_idx, frame_idx = seq.get_style_frame_indices(7)
         self.assertEqual(style_idx, 1)
         self.assertEqual(frame_idx, 2)
-        style_idx, frame_idx = seq.get_style_frame_indices(7, ignore_final_frame_with_no_flow=True)
+
+        # Now, skip the last frame which has no flow
+        seq = dataset_util.SequenceInfo('ZombieScene', 'mixamo', 5, 0,
+                                        shading_styles=['ink0', 'paint1'],
+                                        line_styles=['pencil0', 'pen5'],
+                                        has_flow=True,
+                                        excluded_frames=[-1])
+        self.assertEqual(8, seq.nframes_in_all_styles())
+        style_idx, frame_idx = seq.get_style_frame_indices(4)
+        self.assertEqual(style_idx, 1)
+        self.assertEqual(frame_idx, 0)
+        style_idx, frame_idx = seq.get_style_frame_indices(7)
         self.assertEqual(style_idx, 1)
         self.assertEqual(frame_idx, 3)
 
@@ -116,8 +123,24 @@ class SequenceInfoTest(unittest.TestCase):
             self.assertGreater(len(seq_path), 0,
                                msg='Got empty path for data type %s' % str(data_type))
 
+    def test_exclude_include_frames(self):
+        seq = dataset_util.SequenceInfo('ZombieScene', 'mixamo', 7, 0,
+                                        shading_styles=['ink0', 'paint1'],
+                                        line_styles=['pencil0', 'pen5'],
+                                        has_flow=True,
+                                        excluded_frames=[-1],
+                                        included_frames=[0,2,3])
+        self.assertEqual(6, seq.nframes_in_all_styles())
+        style_idx, frame_idx = seq.get_style_frame_indices(5)
+        self.assertEqual(style_idx, 1)
+        self.assertEqual(frame_idx, 3)
+
+        with self.assertRaises(RuntimeError):
+            style_idx, frame_idx = seq.get_style_frame_indices(6)
+
 
 class DatasetHelperTest(unittest.TestCase):
+
     def get_all_paths_by_frame(self, helper, data_type, is_meta):
         out = []
         for global_frame in range(helper.num_frames_in_all_styles()):
@@ -252,3 +275,22 @@ class DatasetHelperTest(unittest.TestCase):
         self.assertEqual('marker1', seq.line_styles[0])
         expected_frame_num = 15 + 10
         self.assertEqual(expected_frame_num, helper.num_frames_in_all_styles())
+
+    def test_frame_filtering(self):
+        # Ground truth flow paths
+        gt_file = get_test_data_path(os.path.join('ground_truth', 'mock_flow_paths2.txt'))
+        with open(gt_file) as f:
+            expected_flow_paths = set([line.strip() for line in f])
+        gt_file = get_test_data_path(os.path.join('ground_truth', 'mock_composite_paths2.txt'))
+        with open(gt_file) as f:
+            expected_composite_paths = set([line.strip() for line in f])
+
+        # Read in paths using our utility
+        seq_file = get_test_data_path('mock_sequence_list2.txt')
+        helper = dataset_util.DatasetHelper(seq_file, require_flow=True)
+        actual_paths = set(self.get_all_paths_by_frame(helper, dataset_util.DataType.RENDER_COMPOSITE, False))
+        self.assertEqual(expected_composite_paths, actual_paths)
+
+        actual_paths = set(self.get_all_paths_by_frame(helper, dataset_util.DataType.FLOW, True))
+        self.assertEqual(expected_flow_paths, actual_paths)
+

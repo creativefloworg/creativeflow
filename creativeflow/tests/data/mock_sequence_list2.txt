@@ -1,0 +1,5 @@
+scene_name|scene_source|nframes|cam_idx|nstyles|has_flow|shading_styles|line_styles|included_frames
+turbosquid_robot|web|34|1|1|YES|cpencil1|ink6|1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25
+turbosquid_robot|web|34|0|1|YES|pencil0_bw|paint4|5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29
+04090263_27257aee4b0f91b1a16c70da5e24216f|shapenet|72|0|1|YES|textured1|paint3|45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69
+paladin_prop_j_nordstrom.Capoeira-44-46|mixamo|300|0|1|YES|paint3|marker0|9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33
