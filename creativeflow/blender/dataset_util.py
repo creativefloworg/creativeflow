@@ -94,6 +94,7 @@ class DatasetHelper(object):
                 exclude_frame_numbers.append(-1)
 
         data_frame = pandas.read_csv(sequences_file, sep='|')
+        data_frame.fillna('', inplace=True)
         for i in data_frame.index:
             row = data_frame.iloc[i]
             seq = DatasetHelper.sequence_from_row(
@@ -102,6 +103,11 @@ class DatasetHelper(object):
                 logger.debug(
                     'Skipping sequence (one of the shading,outline styles matched regexp %s %s): %s' %
                     (row['shading_styles'], row['line_styles'], str(seq)))
+                continue
+
+            if seq.nframes == 0:
+                logger.warning(
+                    'Skipping sequence (no frames included, given criteria): %s' % str(seq))
                 continue
 
             if require_flow and not seq.has_flow:
@@ -139,7 +145,10 @@ class DatasetHelper(object):
 
         included_frames = None
         if 'included_frames' in row:
-            included_frames = [int(x) for x in row['included_frames'].split(',')]
+            if not row['included_frames']:
+                included_frames = []
+            else:
+                included_frames = [int(x) for x in row['included_frames'].split(',')]
 
         return SequenceInfo(
             row['scene_name'],
@@ -481,7 +490,7 @@ class SequenceInfo(object):
         self.tags = tags
 
         orig_frames = range(0, nframes_raw)
-        if included_frames:
+        if included_frames is not None:
             self.frames = included_frames
         else:
             self.frames = orig_frames
