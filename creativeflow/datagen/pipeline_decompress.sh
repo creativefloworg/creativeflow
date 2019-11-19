@@ -322,6 +322,18 @@ for D in $DIRS; do
     fi
 done
 
+# Handle licenses
+echo "----------------------------------------------------------------"
+echo "Processing LICENSE.txt files"
+for LIC in $(find "$DATADIR" -name "LICENSE.txt" -exec realpath --relative-to "$DATADIR" {} \;); do
+  OUT_LICENSE=$ODIR/$LIC
+  echo "   > Copying License: $DATADIR/$LIC to $OUT_LICENSE"
+
+  LIC_DIR=$(dirname "$OUT_LICENSE")
+  mkdir -p "$LIC_DIR"
+  cp "$DATADIR/$LIC" "$OUT_LICENSE"
+done
+
 if [ $N_MISSING_FILES -gt "0" ]; then
     echo "NOTE: $N_MISSING_FILES out of $NDIRS scenes are missing files related to flow (see our errata on why this may be)"
     if [ $N_MISSING_FILES -gt $((NDIRS / 10)) ]; then
