@@ -221,7 +221,7 @@ for D in $DIRS; do
     fi
 
     HAS_MISSING_FILES=0
-    CAMS=$(ls -1 "$DATADIR/$D")
+    CAMS=$(find "$DATADIR/$D" -mindepth 1 -maxdepth 1 -type d -name "cam*" -exec realpath --relative-to "$DATADIR/$D" {} \;)
     for C in $CAMS; do
         INBASE=$DATADIR/$D/$C
         OBASE=$ODIR/$D/$C
@@ -320,6 +320,18 @@ for D in $DIRS; do
     if [ $HAS_MISSING_FILES -eq "1" ]; then
         N_MISSING_FILES=$((N_MISSING_FILES + 1))
     fi
+done
+
+# Handle licenses
+echo "----------------------------------------------------------------"
+echo "Processing LICENSE.txt files"
+for LIC in $(find "$DATADIR" -name "LICENSE.txt" -exec realpath --relative-to "$DATADIR" {} \;); do
+  OUT_LICENSE=$ODIR/$LIC
+  echo "   > Copying License: $DATADIR/$LIC to $OUT_LICENSE"
+
+  LIC_DIR=$(dirname "$OUT_LICENSE")
+  mkdir -p "$LIC_DIR"
+  cp "$DATADIR/$LIC" "$OUT_LICENSE"
 done
 
 if [ $N_MISSING_FILES -gt "0" ]; then
