@@ -221,7 +221,7 @@ for D in $DIRS; do
     fi
 
     HAS_MISSING_FILES=0
-    CAMS=$(ls -1 "$DATADIR/$D")
+    CAMS=$(find "$DATADIR/$D" -mindepth 1 -maxdepth 1 -type d -name "cam*" -exec realpath --relative-to "$DATADIR/$D" {} \;)
     for C in $CAMS; do
         INBASE=$DATADIR/$D/$C
         OBASE=$ODIR/$D/$C
