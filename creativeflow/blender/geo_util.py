@@ -8,6 +8,7 @@ import random
 import math
 import numpy as np
 import itertools
+import time
 from mathutils import Vector
 
 
@@ -231,6 +232,118 @@ def distance_from_camera_center(bbox, cam):
     center = Vector((center[0], center[1], center[2]))
     cam_cood = bpy_extras.object_utils.world_to_camera_view(scene, cam, center)
     return (cam_cood[0] - 0.5) ** 2 + (cam_cood[1] - 0.5) ** 2
+
+
+def get_scene_bbox_animated():
+    """ Return bounding box for mesh objects in the scene across all frames. """
+    scene = bpy.context.scene
+
+    scene.frame_set(scene.frame_start)
+    bbox = get_scene_bbox()
+    for i in range(scene.frame_start + 1, scene.frame_end):
+        scene.frame_set(i)
+        bbox.merge_with(get_scene_bbox())
+    return bbox
+
+
+def camera_point_at(cam, pt):
+    """ Rotates the camera to look at pt. """
+    ray = cam.location - pt
+    quat = ray.to_track_quat('Z', 'Y')
+    cam.rotation_euler = quat.to_euler()
+
+
+def switch_to_camera_by_number(num):
+    cam = get_camera_by_number(num)
+    switch_to_camera(cam)
+
+
+def switch_to_camera(cam):
+    deselect_all_objects()
+    cam.select = True
+
+    bpy.context.scene.objects.active = cam
+    bpy.context.scene.camera = cam
+    for area in bpy.context.screen.areas:
+        if area.type == 'VIEW_3D':
+            area.spaces.active.region_3d.view_perspective = 'CAMERA'
+            override = bpy.context.copy()
+            override['area'] = area
+            bpy.ops.view3d.object_as_camera(override)
+        break
+
+
+def play_animation_on_camera_by_number(num):
+    switch_to_camera_by_number(num)
+    bpy.context.scene.frame_set(bpy.context.scene.frame_start)
+    bpy.ops.screen.animation_play()
+
+
+def generate_random_cameras_for_scene(ncam):
+    """ Updated random camera generator designed for creating a large
+    number of camera angles for an animated scene.
+    Camera is always fixed and uses orthographic projection.
+    """
+    # Compute bounding box for the entire animated scene
+    bbox = get_scene_bbox_animated()
+    bbox_dims = bbox.get_dims()
+    bbox_center = bbox.get_center()
+
+    # Sample the top and bottom less densely
+    ncam_tb = int(ncam * 0.2)
+    ncam_sides = ncam - ncam_tb
+    if (ncam_sides % 2) == 1:
+        ncam_tb = ncam_tb - 1
+        ncam_sides = ncam - ncam_tb
+    ncam_top = ncam_tb // 2
+    ncam_bottom = ncam_tb - ncam_top
+
+    # Sample the sides of the box proportional to their area
+    ncam_sides_half = ncam_sides // 2
+    area_xz = bbox_dims[0] * bbox_dims[2]
+    area_yz = bbox_dims[1] * bbox_dims[2]
+    ncam_xz_half = int(ncam_sides_half * area_xz / (area_xz + area_yz))
+    ncam_yz_half = ncam_sides_half - ncam_xz_half
+
+    # Generate side cameras
+    for side in ['xz', 'yz']:
+        for c in range(ncam_xz_half if side == 'xz' else ncam_yz_half):
+            for other_mult in [-1, 1]:
+                z = random.random() * bbox_dims[2] + bbox.mins[2]
+
+                if side == 'xz':
+                    x = random.random() * bbox_dims[0] + bbox.mins[0]
+                    y = bbox.mins[1] if other_mult == -1 else bbox.maxs[1]
+                else:
+                    y = random.random() * bbox_dims[1] + bbox.mins[1]
+                    x = bbox.mins[0] if other_mult == -1 else bbox.maxs[0]
+
+
+                # Note: for orthographic cameras rotation jittering forward/back
+                # has no effect. Instead we jitter the scaling.
+                bpy.ops.object.camera_add(location=Vector((x, y, z)))
+                cam = bpy.context.object
+                cam.data.type = 'ORTHO'
+                cam.data.clip_start = 0
+                cam.data.ortho_scale = random.random() * 9 + 1.0
+
+                # 50% of cameras just point straight
+                is_straight = random.random() < 0.5
+                if is_straight:
+                    look_at = Vector((x if side == 'xz' else bbox_center[0],
+                                      y if side == 'yz' else bbox_center[1],
+                                      z))
+                else:
+                    look_at = Vector((bbox_center[0] + np.random.normal(scale=0.2*bbox_dims[0]),
+                                      bbox_center[1] + np.random.normal(scale=0.2*bbox_dims[1]),
+                                      bbox_center[2] + np.random.normal(scale=0.2*bbox_dims[2])))
+                    camera_point_at(cam, look_at)
+
+
+    # 50% of side cameras point straight
+
+    # all of top/bottom cameras point at character in one of the frames
+
 
 
 def create_random_camera(bbox, frac_space_x, frac_space_y, frac_space_z):
