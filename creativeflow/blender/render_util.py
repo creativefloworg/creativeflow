@@ -148,9 +148,14 @@ def set_linestyle(lines_blend, matching_regexp, color=None,
     else:
         line_layer = scene.render.layers.active
 
+    # Disable other linesets
+    for k in line_layer.freestyle_settings.linesets.keys():
+        line_layer.freestyle_settings.linesets[k].show_render = False
+
     scene.render.use_freestyle = True
     line_layer.freestyle_settings.linesets.new("stymo")
     line_layer.freestyle_settings.linesets["stymo"].linestyle = data_to.linestyles[idx]
+    line_layer.freestyle_settings.linesets["stymo"].show_render = True
 
     if color:
         for i in range(3):

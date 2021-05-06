@@ -20,6 +20,8 @@ CLEANUP=0
 RANDBG=1
 BGNUM=0
 FRAME_BOUNDS=""
+STYLIT_STYLES_REGEXP=""
+STYLIT_RANDOM_COLOR_PROB=60
 
 USAGE="$0 <FLAGS> <blend_path> <output_dir> <extra_flags to render_main.py (optional)>
 
@@ -56,7 +58,9 @@ Flags:
    - 14: make ffmpeg clips and compress
    - 15: check that all the files have been written successfully
    - 16: perform sanity checks on flow/correspondence agreement
-   - 17: partial pipeline data clean up (only run after 14,15)
+   - 17: partial pipeline data clean up (only run after 14,15); removes raw flow/frames
+   - 18: remove aux data (complementary to 17; removes aux data needed to render)
+   - 19: write sequence list
 
 -c number of camera angles per blend (default=$NCAM)
 
@@ -77,6 +81,14 @@ Flags:
 -d use deterministic background image order for phase :13:
 
 -b frame bounds file, containing [normalized blendname|start_frame_offset|end_frame_offset]
+
+-m manually specify regular expression for the blender style
+
+-M manually specify regular expression for the stylit style
+
+-L manually specify regular expression for line style
+
+-p specify probability of color randomization for stylit; default=$STYLIT_RANDOM_COLOR_PROB
 
 ***
 External environment variables:
@@ -106,7 +118,7 @@ export ABCV_BACKGROUND_DIR=\$DATA/images
         \"--rendered_frames=\$MAX_FRAMES --width=50 --height=50\"
 "
 
-while getopts ':hs:c:n:N:O:rRtXdb:' option; do
+while getopts ':hs:c:n:N:O:rRtXdb:L:M:m:p:' option; do
     case "$option" in
         h) echo "$USAGE"
            exit
@@ -156,6 +168,19 @@ while getopts ':hs:c:n:N:O:rRtXdb:' option; do
            ;;
         b) FRAME_BOUNDS=$OPTARG
            echo "> setting frame bounds to $FRAME_BOUNDS"
+           ;;
+        L) MANUAL_LINES=$OPTARG
+           echo "> restricting line styles to those matching $MANUAL_LINES"
+           echo "  (this also disables line color randomization)"
+           ;;
+        M) STYLIT_STYLES_REGEXP=$OPTARG
+           echo "> filtering stylit styles by $STYLIT_STYLES_REGEXP"
+           ;;
+        m) MANUAL_BLENDER_MAT=$OPTARG
+           echo "> filtering blender styles by $MANUAL_BLENDER_MAT"
+           ;;
+        p) STYLIT_RANDOM_COLOR_PROB=$OPTARG
+           echo "> setting stylit color randomization probability to $STYLIT_RANDOM_COLOR_PROB"
            ;;
         \?) printf "ERROR! illegal option: -%s\n" "$OPTARG" >&2
             echo "$USAGE" >&2
@@ -304,6 +329,8 @@ for i in $(seq 0 $(($k - 1))); do
     NAME=$(basename "$BLENDFILE")
     FNAME="${NAME%.*}"
     FNAME=${FNAME// /_}
+
+    SEQ_LIST_FILE=$ODIR/pipeline/$FNAME/sequence_list.txt
 
     for (( CAM=0; CAM<$NCAM; CAM++)); do
         # Actual outputs
@@ -508,7 +535,9 @@ EOF
             # TODO: remove outline blends and renders too
 
             for (( STY=0; STY<$NSTYLESB; STY++)); do
-                if [ "$STY" -eq "0" ] && [ $NSTYLESB -gt 1 ]; then
+                if [ ! -z ${MANUAL_BLENDER_MAT+x} ]; then
+                    MAT="${MANUAL_BLENDER_MAT}"
+                elif [ "$STY" -eq "0" ] && [ $NSTYLESB -gt 1 ]; then
                     MAT="flat"
                 elif [ "$STY" -eq "1" ] && [ $NSTYLESB -gt 2 ]; then
                     MAT="toon"
@@ -556,6 +585,10 @@ EOF
                     echo "Looking for line req: $(dirname $ABCV_MATS)/line_reqs/$STYLENAME.txt"
                     LINE_REQ=$(dirname $ABCV_MATS)/line_reqs/$STYLENAME.txt
                     LINE_SPEC=$(get_line_spec $LINE_REQ)
+                    if [ ! -z ${MANUAL_LINES+x} ]; then
+                        echo "Disabling color randomization"
+                        LINE_SPEC=$(echo "$LINE_SPEC" | awk '{printf "%s %s", $1, $2}')
+                    fi
                     echo "$LINE_SPEC" >> $LINE_SPECS
 
                     echo "      --> Ok: ${SHADING_BLEND_PREFIX}${STY}_"
@@ -589,8 +622,15 @@ EOF
                     echo "      --> Ok: $STYLIT_BLEND"
                     echo "            : $TESTFRAMES/redmat_${FNAME}_cam${CAM}_"
 
-                    STYLES=($($(which ls) -1 $ABCV_STYLIT_STYLES | $SHUF | head -n$NSTYLESS))
+                    STYLES=($($(which ls) -1 $ABCV_STYLIT_STYLES | $SHUF | \
+                                  grep "$STYLIT_STYLES_REGEXP" | head -n$NSTYLESS))
                     echo "ABCV: $ABCV_STYLIT_STYLES"
+                    if [ ${#STYLES[@]} -lt $NSTYLESS ]; then
+                        echo "Error: only ${#STYLES[@]} styles match $STYLIT_STYLES_REGEXP " \
+                             "(${NSTYLESS} required)"
+                        echo "Matching styles: ${STYLES[@]}"
+                        exit 1
+                    fi
                     for (( STY=0; STY<$NSTYLESS; STY++)); do
                         STYLE=${STYLES[STY]}
                         echo "Looking for style: $ABCV_STYLIT_STYLES/$STYLE"
@@ -598,6 +638,10 @@ EOF
 
                         LINE_REQ=$ABCV_STYLIT_STYLES/$STYLE/line_req.txt
                         LINE_SPEC=$(get_line_spec $LINE_REQ)
+                        if [ ! -z ${MANUAL_LINES+x} ]; then
+                            echo "Disabling color randomization"
+                            LINE_SPEC=$(echo "$LINE_SPEC" | awk '{printf "%s %s", $1, $2}')
+                        fi
                         echo "$LINE_SPEC" >> $LINE_SPECS
 
                         echo "$STYLE" > $AUXDIR/stylit_info${STY}.txt
@@ -620,7 +664,9 @@ EOF
 
             # Configure outlines -----------------------------------------------
             for (( STY=0; STY<$NSTYLES; STY++)); do
-                if [ "$STY" -eq "0" ] && [ $NSTYLES -gt 1 ]; then
+                if [ ! -z ${MANUAL_LINES+x} ]; then
+                    LINES="${MANUAL_LINES}"
+                elif [ "$STY" -eq "0" ] && [ $NSTYLES -gt 1 ]; then
                     LINES="pen[^c]"  # not pencil, but pen
                 else
                     LINES=".*"
@@ -843,7 +889,7 @@ EOF
                     STYLE_ODIR=$SHADING_DIR/shading$((NSTYLESB + STY)).$STYLE
                     mkdir -p $STYLE_ODIR
 
-                    RANDPROB=60
+                    RANDPROB=$STYLIT_RANDOM_COLOR_PROB
                     echo "      using style $STYLE"
                     echo "      outputting to $STYLE_ODIR"
                     ${SCRIPT_DIR}/stylize.sh -r $RANDPROB $STYLEDIR \
@@ -1324,6 +1370,23 @@ EOF
             echo "       --> OK: removed $BACKFLOWDIR"
             rm -rf $DEPTHDIR
             echo "       --> OK: removed $DEPTHDIR"
+        fi
+
+        if [[ "$STAGES" == *:18:* ]]; then
+            echo "STEP 18: removing aux data"
+            rm -rf $AUXDIR
+            echo "       --> OK: removed $AUXDIR"
+        fi
+
+        if [[ "$STAGES" == *:19:* ]]; then
+            echo "STEP 19: writing seq list file"
+
+            if [ ! -f $SEQ_LIST_FILE ]; then
+                echo "scene_name|scene_source|nframes|cam_idx|nstyles|has_flow|shading_styles|line_styles" >> $SEQ_LIST_FILE
+            fi
+
+            echo "${FNAME}|source_UNK|?|${CAM}|?|YES|?|?" >> $SEQ_LIST_FILE
+            echo "       --> OK: added to $SEQ_LIST_FILE"
         fi
 
         echo "DONE processing camera $CAM for blend $FNAME"

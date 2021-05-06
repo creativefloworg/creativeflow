@@ -305,45 +305,57 @@ def generate_random_cameras_for_scene(ncam):
     ncam_xz_half = int(ncam_sides_half * area_xz / (area_xz + area_yz))
     ncam_yz_half = ncam_sides_half - ncam_xz_half
 
-    # Generate side cameras
-    for side in ['xz', 'yz']:
-        for c in range(ncam_xz_half if side == 'xz' else ncam_yz_half):
-            for other_mult in [-1, 1]:
-                z = random.random() * bbox_dims[2] + bbox.mins[2]
+    # Generate all the cameras
+    cams = []
+    for other_dim in range(3):  # x (yz), y (xz), z (xy) side in ['xz', 'yz']:
+        for other_mult in [-1, 1]:
+            cam_count = 0
+            if other_dim == 0:
+                cam_count = ncam_yz_half
+            elif other_dim == 1:
+                cam_count = ncam_xz_half
+            elif other_mult == 1:
+                cam_count = ncam_top
+            else:
+                cam_count = ncam_bottom
 
-                if side == 'xz':
-                    x = random.random() * bbox_dims[0] + bbox.mins[0]
-                    y = bbox.mins[1] if other_mult == -1 else bbox.maxs[1]
-                else:
-                    y = random.random() * bbox_dims[1] + bbox.mins[1]
-                    x = bbox.mins[0] if other_mult == -1 else bbox.maxs[0]
-
+            for c in range(cam_count):
+                location = [0, 0, 0]
+                for i in range(3):
+                    if i == other_dim:
+                        location[i] = bbox.mins[i] if other_mult == -1 else bbox.maxs[i]
+                    else:
+                        location[i] = random.random() * bbox_dims[i] + bbox.mins[i]
 
                 # Note: for orthographic cameras rotation jittering forward/back
                 # has no effect. Instead we jitter the scaling.
-                bpy.ops.object.camera_add(location=Vector((x, y, z)))
+                bpy.ops.object.camera_add(
+                    location=Vector((location[0], location[1], location[2])))
                 cam = bpy.context.object
                 cam.data.type = 'ORTHO'
                 cam.data.clip_start = 0
                 cam.data.ortho_scale = random.random() * 9 + 1.0
+                cams.append(cam)
 
                 # 50% of cameras just point straight
                 is_straight = random.random() < 0.5
                 if is_straight:
-                    look_at = Vector((x if side == 'xz' else bbox_center[0],
-                                      y if side == 'yz' else bbox_center[1],
-                                      z))
+                    look_at = [x for x in location]
+                    look_at[other_dim] = bbox_center[other_dim]
                 else:
-                    look_at = Vector((bbox_center[0] + np.random.normal(scale=0.2*bbox_dims[0]),
-                                      bbox_center[1] + np.random.normal(scale=0.2*bbox_dims[1]),
-                                      bbox_center[2] + np.random.normal(scale=0.2*bbox_dims[2])))
-                    camera_point_at(cam, look_at)
+                    look_at = [0, 0, 0]
+                    for i in range(3):
+                        jitter = np.random.normal(scale=0.2*bbox_dims[i])
+                        if jitter < -0.5 * bbox_dims[i]:
+                            jitter = -0.5 * bbox_dims[i]
+                        elif jitter > 0.5 * bbox_dims[i]:
+                            jitter = 0.5 * bbox_dims[i]
+                        look_at[i] = bbox_center[i] + jitter
 
+                camera_point_at(cam, Vector((look_at[0], look_at[1], look_at[2])))
 
-    # 50% of side cameras point straight
-
-    # all of top/bottom cameras point at character in one of the frames
-
+    print('Generated {} cameras ({} requested)'.format(len(cams), ncam))
+    return cams
 
 
 def create_random_camera(bbox, frac_space_x, frac_space_y, frac_space_z):

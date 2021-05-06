@@ -87,9 +87,11 @@ if __name__ == "__main__":
         nmoving = np.sum(magnitudes > thresh)
         if nmoving > 0:
             fbins = perc_bins / 100.0 * max(width, height)
-            bins = np.array([thresh, 1] + fbins.tolist())
+            bins = np.array([thresh] + fbins.tolist())
+            final_bins = bins[bins < max_val].tolist() + [max_val]
+            print(final_bins)
             hist, _ = np.histogram(magnitudes, range=(thresh, max_val),
-                                   bins=bins[bins < max_val].tolist() + [max_val])
+                                   bins=final_bins)
             motion_frames += 1
             motion_pixels += nmoving / npixels
         else:

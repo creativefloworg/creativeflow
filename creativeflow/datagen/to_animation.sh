@@ -55,12 +55,12 @@ if [ $AUTO_START -eq "1" ]; then
     FLAGS="$FLAGS -start_number $START"
 fi
 
-ffmpeg -hide_banner -loglevel panic \
-       $FLAGS -framerate $FRATE \
+set -x
+ffmpeg $FLAGS -framerate $FRATE \
        -i "$FPATTERN" \
        -c:v libx264 -profile:v high -crf $CRF -pix_fmt yuv420p \
        "$OFILE"
-
+set +x
 # Lossless (not supported by this script):
 # https://stackoverflow.com/questions/4839303/convert-image-sequence-to-lossless-movie
 # https://trac.ffmpeg.org/wiki/Encode/H.264
