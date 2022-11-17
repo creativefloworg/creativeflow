@@ -964,25 +964,30 @@ EOF
             echo "STEP 12: Unpacking EXR metadata $EXRDIR"
             echo "        $LOGFILE"
 
-            mkdir -p $FLOWDIR
-            mkdir -p $BACKFLOWDIR
-            mkdir -p $OCCDIR
+            # mkdir -p $FLOWDIR
+            # mkdir -p $BACKFLOWDIR
+            # mkdir -p $OCCDIR
             mkdir -p $DEPTHDIR
             mkdir -p $DEPTHIMGDIR
 
             mkdir -p $FIN_METADIR
             mkdir -p $FIN_METADIR_SUPP
             echo "  ... unpacking and compressing all the core data"
+            # ./blender/unpack_exr_main.py \
+            #     --input_dir=$EXRDIR \
+            #     --flow_odir=$FLOWDIR \
+            #     --back_flow_odir=$BACKFLOWDIR \
+            #     --depth_odir=$DEPTHDIR \
+            #     --depth_range_ofile=$DEPTHIMGDIR/range.txt \
+            #     --occlusions_odir=$OCCDIR \
+            #     --flow_zip=$FIN_METADIR/flow.zip \
+            #     --back_flow_zip=$FIN_METADIR_SUPP/backflow.zip \
+            #     --depth_zip=$FIN_METADIR_SUPP/depth.zip \
+            #     > $LOGFILE 2>&1
             ./blender/unpack_exr_main.py \
                 --input_dir=$EXRDIR \
-                --flow_odir=$FLOWDIR \
-                --back_flow_odir=$BACKFLOWDIR \
                 --depth_odir=$DEPTHDIR \
                 --depth_range_ofile=$DEPTHIMGDIR/range.txt \
-                --occlusions_odir=$OCCDIR \
-                --flow_zip=$FIN_METADIR/flow.zip \
-                --back_flow_zip=$FIN_METADIR_SUPP/backflow.zip \
-                --depth_zip=$FIN_METADIR_SUPP/depth.zip \
                 > $LOGFILE 2>&1
             echo "      --> Ok: $FLOWDIR"
             echo "            : $BACKFLOWDIR"
@@ -1003,12 +1008,12 @@ EOF
 
             echo "  ... getting flow information"
             FLOWINFO=$ODIR/pipeline/info/${FNAME}_cam${CAM}_flowinfo.txt
-            ./blender/compressed_info_main.py \
-                --flowzip=$FIN_METADIR/flow.zip \
-                --objiddir=$IDXDIR \
-                --out_file=$FLOWINFO \
-                > $LOGFILE 2>&1
-            echo "     --> Ok: $FLOWINFO"
+            # ./blender/compressed_info_main.py \
+            #     --flowzip=$FIN_METADIR/flow.zip \
+            #     --objiddir=$IDXDIR \
+            #     --out_file=$FLOWINFO \
+            #     > $LOGFILE 2>&1
+            # echo "     --> Ok: $FLOWINFO"
         fi
 
         if [[ "$STAGES" == *:13_0:* ]]; then
